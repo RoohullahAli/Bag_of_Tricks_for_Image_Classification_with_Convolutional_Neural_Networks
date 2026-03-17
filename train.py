@@ -46,6 +46,17 @@ if __name__ == '__main__':
         os.makedirs(log_path)
     writer = SummaryWriter(log_dir=log_path)
 
+    #output log file
+    output_path = 'output'
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+    log_file = open(os.path.join(output_path, '{}-{}-{}.log'.format(args.net, args.dataset, settings.TIME_NOW)), 'w')
+
+    def log(msg):
+        print(msg)
+        log_file.write(msg + '\n')
+        log_file.flush()
+
     #get dataloader
     if args.dataset == 'cifar100':
         train_mean = settings.CIFAR100_TRAIN_MEAN
@@ -177,8 +188,11 @@ if __name__ == '__main__':
         visualize_param_hist(writer, net, epoch)
 
         avg_train_loss = train_loss / len(train_dataloader)
-        print('Epoch [{}/{}]  Train Loss: {:.4f}  LR: {:.6f}'.format(
-            epoch, args.e, avg_train_loss, optimizer.param_groups[0]['lr']))
+        msg = 'Epoch [{}/{}]  Train Loss: {:.4f}  LR: {:.6f}'.format(
+            epoch, args.e, avg_train_loss, optimizer.param_groups[0]['lr'])
+        print(msg)
+        log_file.write(msg + '\n')
+        log_file.flush()
 
         net.eval()
 
@@ -198,8 +212,11 @@ if __name__ == '__main__':
 
         test_loss = total_loss / len(test_dataloader)
         acc = correct / len(test_dataloader.dataset)
-        print('Test set: loss: {:.4f}, Accuracy: {:.4f}'.format(test_loss, acc))
+        msg = 'Test set: loss: {:.4f}, Accuracy: {:.4f}'.format(test_loss, acc)
+        print(msg)
         print()
+        log_file.write(msg + '\n\n')
+        log_file.flush()
 
         visualize_test_loss(writer, test_loss, epoch)
         visualize_test_acc(writer, acc, epoch)
@@ -214,6 +231,7 @@ if __name__ == '__main__':
             torch.save(net.state_dict(), checkpoint_path.format(net=args.net, epoch=epoch, type='regular'))
     
     writer.close()
+    log_file.close()
 
 
 
