@@ -73,6 +73,7 @@ if __name__ == '__main__':
 
     if args.dataset == 'cifar100':
         train_transforms = tv_transforms.Compose([
+            tv_transforms.ToPILImage(),
             tv_transforms.RandomCrop(32, padding=4),
             tv_transforms.RandomHorizontalFlip(),
             tv_transforms.AutoAugment(tv_transforms.AutoAugmentPolicy.CIFAR10),
@@ -81,6 +82,7 @@ if __name__ == '__main__':
             tv_transforms.RandomErasing(p=0.25),
         ])
         test_transforms = tv_transforms.Compose([
+            tv_transforms.ToPILImage(),
             tv_transforms.ToTensor(),
             tv_transforms.Normalize(test_mean, test_std),
         ])
