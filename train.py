@@ -13,8 +13,8 @@ import torch.optim as optim
 import numpy as np
 
 #from PIL import Image
-import transforms 
-#from torchvision import transforms
+import transforms
+from torchvision import transforms as tv_transforms
 from tensorboardX import SummaryWriter
 from conf import settings
 from utils import *
@@ -60,24 +60,34 @@ if __name__ == '__main__':
         test_std = settings.TEST_STD
         num_classes = 200
 
-    train_transforms = transforms.Compose([
-        #transforms.ToPILImage(),
-        transforms.ToCVImage(),
-        transforms.RandomResizedCrop(settings.IMAGE_SIZE),
-        transforms.RandomHorizontalFlip(),
-        transforms.ColorJitter(brightness=0.4, saturation=0.4, hue=0.4),
-        #transforms.RandomErasing(),
-        #transforms.CutOut(56),
-        transforms.ToTensor(),
-        transforms.Normalize(train_mean, train_std)
-    ])
-
-    test_transforms = transforms.Compose([
-        transforms.ToCVImage(),
-        transforms.CenterCrop(settings.IMAGE_SIZE),
-        transforms.ToTensor(),
-        transforms.Normalize(test_mean, test_std)
-    ])
+    if args.dataset == 'cifar100':
+        train_transforms = tv_transforms.Compose([
+            tv_transforms.RandomCrop(32, padding=4),
+            tv_transforms.RandomHorizontalFlip(),
+            tv_transforms.AutoAugment(tv_transforms.AutoAugmentPolicy.CIFAR10),
+            tv_transforms.ToTensor(),
+            tv_transforms.Normalize(train_mean, train_std),
+            tv_transforms.RandomErasing(p=0.25),
+        ])
+        test_transforms = tv_transforms.Compose([
+            tv_transforms.ToTensor(),
+            tv_transforms.Normalize(test_mean, test_std),
+        ])
+    else:
+        train_transforms = transforms.Compose([
+            transforms.ToCVImage(),
+            transforms.RandomResizedCrop(settings.IMAGE_SIZE),
+            transforms.RandomHorizontalFlip(),
+            transforms.ColorJitter(brightness=0.4, saturation=0.4, hue=0.4),
+            transforms.ToTensor(),
+            transforms.Normalize(train_mean, train_std)
+        ])
+        test_transforms = transforms.Compose([
+            transforms.ToCVImage(),
+            transforms.CenterCrop(settings.IMAGE_SIZE),
+            transforms.ToTensor(),
+            transforms.Normalize(test_mean, test_std)
+        ])
 
     if args.dataset == 'cifar100':
         train_dataloader = get_cifar100_train_dataloader(
