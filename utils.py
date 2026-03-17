@@ -10,25 +10,57 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
 from conf import settings
-from dataset.dataset import CUB_200_2011_Train, CUB_200_2011_Test
+from dataset.dataset import CUB_200_2011_Train, CUB_200_2011_Test, CIFAR100Train, CIFAR100Test
 
-def get_network(args):
+def get_network(args, num_classes=200):
 
     if args.net == 'vgg16':
         from models.vgg import vgg16
-        net = vgg16()
+        net = vgg16(num_class=num_classes)
 
     elif args.net == 'vgg11':
         from models.vgg import vgg11
-        net = vgg11()
-    
+        net = vgg11(num_class=num_classes)
+
     elif args.net == 'vgg13':
         from models.vgg import vgg13
-        net = vgg13()
-    
+        net = vgg13(num_class=num_classes)
+
     elif args.net == 'vgg19':
         from models.vgg import vgg19
-        net = vgg19()
+        net = vgg19(num_class=num_classes)
+
+    elif args.net == 'efficientnet_b0':
+        from torchvision.models import efficientnet_b0
+        net = efficientnet_b0(num_classes=num_classes)
+
+    elif args.net == 'efficientnet_b1':
+        from torchvision.models import efficientnet_b1
+        net = efficientnet_b1(num_classes=num_classes)
+
+    elif args.net == 'efficientnet_b2':
+        from torchvision.models import efficientnet_b2
+        net = efficientnet_b2(num_classes=num_classes)
+
+    elif args.net == 'efficientnet_b3':
+        from torchvision.models import efficientnet_b3
+        net = efficientnet_b3(num_classes=num_classes)
+
+    elif args.net == 'efficientnet_b4':
+        from torchvision.models import efficientnet_b4
+        net = efficientnet_b4(num_classes=num_classes)
+
+    elif args.net == 'efficientnet_b5':
+        from torchvision.models import efficientnet_b5
+        net = efficientnet_b5(num_classes=num_classes)
+
+    elif args.net == 'efficientnet_b6':
+        from torchvision.models import efficientnet_b6
+        net = efficientnet_b6(num_classes=num_classes)
+
+    elif args.net == 'efficientnet_b7':
+        from torchvision.models import efficientnet_b7
+        net = efficientnet_b7(num_classes=num_classes)
 
     return net
 
@@ -81,6 +113,14 @@ def get_test_dataloader(path, transforms, batch_size, num_workers, target_transf
 
     return test_dataloader
 
+def get_cifar100_train_dataloader(path, transforms, batch_size, num_workers):
+    train_dataset = CIFAR100Train(path, transform=transforms)
+    return DataLoader(train_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=True)
+
+def get_cifar100_test_dataloader(path, transforms, batch_size, num_workers):
+    test_dataset = CIFAR100Test(path, transform=transforms)
+    return DataLoader(test_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False)
+
 def get_lastlayer_params(net):
     """get last trainable layer of a net
     Args:
@@ -101,7 +141,7 @@ def get_lastlayer_params(net):
 
 def visualize_network(writer, net):
     """visualize network architecture"""
-    input_tensor = torch.Tensor(3, 3, settings.IMAGE_SIZE, settings.IMAGE_SIZE) 
+    input_tensor = torch.Tensor(1, 3, settings.IMAGE_SIZE, settings.IMAGE_SIZE)
     input_tensor = input_tensor.to(next(net.parameters()).device)
     writer.add_graph(net, Variable(input_tensor, requires_grad=True))
 

@@ -25,6 +25,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-net', type=str, required=True, help='net type')
+    parser.add_argument('-dataset', type=str, default='cub200', choices=['cub200', 'cifar100'], help='dataset to use')
     parser.add_argument('-w', type=int, default=2, help='number of workers for dataloader')
     parser.add_argument('-b', type=int, default=256, help='batch size for dataloader')
     parser.add_argument('-lr', type=float, default=0.04, help='initial learning rate')
@@ -46,6 +47,19 @@ if __name__ == '__main__':
     writer = SummaryWriter(log_dir=log_path)
 
     #get dataloader
+    if args.dataset == 'cifar100':
+        train_mean = settings.CIFAR100_TRAIN_MEAN
+        train_std = settings.CIFAR100_TRAIN_STD
+        test_mean = settings.CIFAR100_TEST_MEAN
+        test_std = settings.CIFAR100_TEST_STD
+        num_classes = 100
+    else:
+        train_mean = settings.TRAIN_MEAN
+        train_std = settings.TRAIN_STD
+        test_mean = settings.TEST_MEAN
+        test_std = settings.TEST_STD
+        num_classes = 200
+
     train_transforms = transforms.Compose([
         #transforms.ToPILImage(),
         transforms.ToCVImage(),
@@ -55,43 +69,56 @@ if __name__ == '__main__':
         #transforms.RandomErasing(),
         #transforms.CutOut(56),
         transforms.ToTensor(),
-        transforms.Normalize(settings.TRAIN_MEAN, settings.TRAIN_STD)
+        transforms.Normalize(train_mean, train_std)
     ])
 
     test_transforms = transforms.Compose([
         transforms.ToCVImage(),
         transforms.CenterCrop(settings.IMAGE_SIZE),
         transforms.ToTensor(),
-        transforms.Normalize(settings.TRAIN_MEAN, settings.TRAIN_STD)
+        transforms.Normalize(test_mean, test_std)
     ])
 
-    train_dataloader = get_train_dataloader(
-        settings.DATA_PATH,
-        train_transforms,
-        args.b,
-        args.w
-    )
+    if args.dataset == 'cifar100':
+        train_dataloader = get_cifar100_train_dataloader(
+            settings.CIFAR100_DATA_PATH,
+            train_transforms,
+            args.b,
+            args.w
+        )
+        test_dataloader = get_cifar100_test_dataloader(
+            settings.CIFAR100_DATA_PATH,
+            test_transforms,
+            args.b,
+            args.w
+        )
+    else:
+        train_dataloader = get_train_dataloader(
+            settings.DATA_PATH,
+            train_transforms,
+            args.b,
+            args.w
+        )
+        test_dataloader = get_test_dataloader(
+            settings.DATA_PATH,
+            test_transforms,
+            args.b,
+            args.w
+        )
 
-    test_dataloader = get_test_dataloader(
-        settings.DATA_PATH,
-        test_transforms,
-        args.b,
-        args.w
-    )
+    if torch.cuda.is_available():
+        device = torch.device('cuda')
+    elif torch.backends.mps.is_available():
+        device = torch.device('mps')
+    else:
+        device = torch.device('cpu')
 
-    #device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") 
-    net = get_network(args)
+    net = get_network(args, num_classes=num_classes)
     net = init_weights(net)
-
-    
-    if isinstance(args.gpus, int):
-        args.gpus = [args.gpus]
-    
-    net = nn.DataParallel(net, device_ids=args.gpus)
-    net = net.cuda()
+    net = net.to(device)
 
     #visualize the network
-    visualize_network(writer, net.module)
+    visualize_network(writer, net)
 
     #cross_entropy = nn.CrossEntropyLoss() 
     lsr_loss = LSR()
@@ -115,34 +142,33 @@ if __name__ == '__main__':
 
         #training procedure
         net.train()
-        
+        train_loss = 0.0
         for batch_index, (images, labels) in enumerate(train_dataloader):
             if epoch <= args.warm:
                 warmup_scheduler.step()
 
-            images = images.cuda()
-            labels = labels.cuda()
+            images = images.to(device)
+            labels = labels.to(device)
 
             optimizer.zero_grad()
             predicts = net(images)
             loss = lsr_loss(predicts, labels)
             loss.backward()
             optimizer.step()
+            train_loss += loss.item()
 
             n_iter = (epoch - 1) * len(train_dataloader) + batch_index + 1
-            print('Training Epoch: {epoch} [{trained_samples}/{total_samples}]\tLoss: {:0.4f}\t'.format(
-                loss.item(),
-                epoch=epoch,
-                trained_samples=batch_index * args.b + len(images),
-                total_samples=len(train_dataloader.dataset),
-            ))
 
             #visualization
             visualize_lastlayer(writer, net, n_iter)
             visualize_train_loss(writer, loss.item(), n_iter)
 
         visualize_learning_rate(writer, optimizer.param_groups[0]['lr'], epoch)
-        visualize_param_hist(writer, net, epoch) 
+        visualize_param_hist(writer, net, epoch)
+
+        avg_train_loss = train_loss / len(train_dataloader)
+        print('Epoch [{}/{}]  Train Loss: {:.4f}  LR: {:.6f}'.format(
+            epoch, args.e, avg_train_loss, optimizer.param_groups[0]['lr']))
 
         net.eval()
 
@@ -150,8 +176,8 @@ if __name__ == '__main__':
         correct = 0
         for images, labels in test_dataloader:
 
-            images = images.cuda()
-            labels = labels.cuda()
+            images = images.to(device)
+            labels = labels.to(device)
 
             predicts = net(images)
             _, preds = predicts.max(1)

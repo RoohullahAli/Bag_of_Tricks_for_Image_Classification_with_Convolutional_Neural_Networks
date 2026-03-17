@@ -72,14 +72,14 @@ class VGG(nn.Module):
 
         return nn.Sequential(*layers)
 
-def vgg11():
-    return VGG([1, 1, 2, 2, 2])
+def vgg11(num_class=200):
+    return VGG([1, 1, 2, 2, 2], num_class=num_class)
 
-def vgg13():
-    return VGG([2, 2, 2, 2, 2])
+def vgg13(num_class=200):
+    return VGG([2, 2, 2, 2, 2], num_class=num_class)
 
-def vgg16():
-    return VGG([2, 2, 3, 3, 3])
+def vgg16(num_class=200):
+    return VGG([2, 2, 3, 3, 3], num_class=num_class)
 
-def vgg19():
-    return VGG([2, 2, 4, 4, 4])
+def vgg19(num_class=200):
+    return VGG([2, 2, 4, 4, 4], num_class=num_class)

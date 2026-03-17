@@ -3,6 +3,7 @@ import os
 
 import cv2
 import numpy as np
+import torchvision
 from torch.utils.data import Dataset
 from PIL import Image
 
@@ -134,6 +135,42 @@ class CUB_200_2011_Test(Dataset):
     def _get_class_by_id(self, image_id):
 
         return self.class_ids[image_id]
+
+
+class CIFAR100Train(Dataset):
+
+    def __init__(self, path, transform=None):
+        self.cifar100 = torchvision.datasets.CIFAR100(root=path, train=True, download=True)
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.cifar100)
+
+    def __getitem__(self, index):
+        img, label = self.cifar100[index]
+        img = np.array(img)
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        if self.transform:
+            img = self.transform(img)
+        return img, label
+
+
+class CIFAR100Test(Dataset):
+
+    def __init__(self, path, transform=None):
+        self.cifar100 = torchvision.datasets.CIFAR100(root=path, train=False, download=True)
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.cifar100)
+
+    def __getitem__(self, index):
+        img, label = self.cifar100[index]
+        img = np.array(img)
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        if self.transform:
+            img = self.transform(img)
+        return img, label
 
 
 def compute_mean_and_std(dataset):
